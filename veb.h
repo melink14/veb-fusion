@@ -8,13 +8,15 @@
 
 #include "util.h"
 
+#define WORD_BITS 8
+
 template< typename E>
 class veb
 {
     typedef typename std::unordered_map<E, std::shared_ptr<veb<E> > > map_type;
     map_type clusters;
     
-    std::unique_ptr<veb<E> > summary;
+    std::shared_ptr<veb<E> > summary;
     E min;  // not stored in a cluster
     E max; // copy of element stored in cluster
     bool isEmpty;
@@ -23,17 +25,26 @@ class veb
 
     // provide working space
 
+    std::shared_ptr<veb<E> > getSummary()
+    {
+        if(summary.get() == NULL)
+        {
+            summary = std::make_shared<veb<E> >(w_size/2);
+        }
+        return summary;
+    }
+
 public:
     veb()
-        : isEmpty(true), w_size(sizeof(E)*4)
+        : isEmpty(true), w_size(sizeof(E)*WORD_BITS)
     {
-        summary.reset(new veb<E>(w_size/2));
+        
     }
 
     explicit veb(E w_size_)
     : isEmpty(true), w_size(w_size_)
     {
-        summary.reset(new veb<E>(w_size/2));
+        
     }
     
     
@@ -59,7 +70,7 @@ public:
         }
         else
         {
-            E c_prime = summary->successor(c);
+            E c_prime = getSummary()->successor(c);
             return (c_prime << w2) | clusters[c_prime]->min;
         }
     }
@@ -87,7 +98,7 @@ public:
         E i = low(x, w_size);
         if(clusters.count(c) == 0)
         {
-            summary->insert(c);
+            getSummary()->insert(c);
             
             clusters[c] = std::make_shared<veb<E> >(w_size/2);
         }
