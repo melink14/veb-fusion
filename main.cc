@@ -5,19 +5,20 @@
 
 int main(int argc, char* argv[])
 {
-    //FusionTree<unsigned long long> test;
+    FusionTree<unsigned long long> test;
     
-    // veb<unsigned long long> test;
-    // srand(time(NULL));
-    // std::cout << "Start Inserts" << std::endl;
-    // for(int i = 0; i < 500000; ++i)
-    // {
-    //     test.insert(rand());
-    // }
-    
-    // unsigned long long next = rand();
-    // std::cout << "Start successor" << std::endl;
-    // std::cout << "suc " << next << ":" << test.successor(next) << std::endl;
+    //veb<unsigned long long> test;
+    srand(time(NULL));
+    std::cout << "Start Inserts" << std::endl;
+    for(int i = 0; i < 500000; ++i)
+    {
+        test.insert(((unsigned long long)rand()<<32)|rand());
+    }
+    std::cout << "Initialize" << std::endl;
+    test.initialize();
+    unsigned long long next = rand();
+    std::cout << "Start successor" << std::endl;
+    std::cout << "suc " << next << ":" << test.successor(next) << std::endl;
 
     // std::set<unsigned long long> rbTree;
 
@@ -33,7 +34,7 @@ int main(int argc, char* argv[])
 
 
     std::cout << "Test important bits" << std::endl;
-    std::vector<unsigned long long> keys;
+    std::vector<unsigned long long > keys;
     keys.push_back(16);
     keys.push_back(20);
     keys.push_back(21);
@@ -47,9 +48,18 @@ int main(int argc, char* argv[])
     unsigned long long mask = get_mask<unsigned long long>(msbs);
     std::cout << "mask:" << mask << std::endl;
 
-    unsigned long long m;
+    unsigned long  long m;
 
     std::vector<int> m_bits = get_m(msbs, m);
 
-    std::cout << msbs[0]+m_bits[0] << std::endl;
+    for(int i = 0; i < msbs.size(); ++i)
+        std::cout << msbs[i]+m_bits[i] << std::endl;
+
+    std::cout << "gap:" << msbs.back()+m_bits.back()-msbs.front()-m_bits.front() << std::endl;
+    std::cout << m << std::endl;
+
+    unsigned long long mh = mul_high(2305843009213693952LL, 2305843009213693952LL);
+
+    std::cout << mh << std::endl;
+    
 }

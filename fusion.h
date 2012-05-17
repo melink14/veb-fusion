@@ -6,6 +6,7 @@
 #include <memory>
 #include <cassert>
 #include <iostream>
+#include <algorithm>
 
 template<typename E>
 class FusionTree
@@ -24,6 +25,18 @@ private:
         bool isLeaf;
         E n;
 
+        std::vector<int> bs;
+        std::vector<int> ms;
+
+        E m;
+        E b_mask;
+        E bm_mask;
+        int sketch_gap;
+        E sketches;
+
+        E sketch_maskl;
+        E sketch_maskh;
+
     public:
         Node(E max_keys)
             : keys(max_keys), children(max_keys+1), n(0)
@@ -37,6 +50,30 @@ private:
         
     };
 
+
+    void precompute_node(std::shared_ptr<Node> x)
+    {
+        if(x->n == 0)
+            return;
+        x->bs = get_impor_bits(x->keys);
+        x->ms = get_m(x->bs, x->m);
+
+        x->b_mask = get_mask<E>(x->bs);
+        x->bm_mask = get_combo_mask<E>(x->bs, x->ms);
+
+        x->sketch_gap = x->bs.back()+x->ms.back()-x->bs.front()-x->ms.front();
+        x->sketch_gap = x->sketch_gap ? x->sketch_gap : 1; // if only 1 item gap is 0 from prev line
+
+        int size = x->keys.size();
+        for(int j = 0; j < x->keys.size(); ++j)
+        {
+            E sketch = approx_sketch(x->m, x->keys[size-j-1], x->b_mask, x->bm_mask, x->bs.front()+x->ms.front());
+            x->sketches |= (sketch | (E(1)<<x->sketch_gap)) << j*(x->sketch_gap+1);
+            x->sketch_maskl |= (E(1) << j*(x->sketch_gap+1));
+            x->sketch_maskh |= (E(1) << j*(x->sketch_gap+1));
+        }
+    }
+    
 public:
 
     FusionTree()
@@ -162,6 +199,64 @@ private:
         }
     }
 
+    E fusion_successor(std::shared_ptr<Node> x, E k)
+    {
+        int i1 = par_comp(x->sketches,
+                          approx_sketch(x->m,
+                                        k,
+                                        x->b_mask,
+                                        x->bm_mask,
+                                        x->bs.front()+x->ms.front()) * x->sketch_maskl,
+                          x->sketch_maskh,
+                          x->sketch_maskl,
+                          x->n,
+                          x->sketch_gap);
+
+        int lcp1 = k ^ x->keys[i1];
+        int lcp2 = k ^ x->keys[i1-1];
+        int msb1;
+        int msb2;
+        switch(sizeof(k))
+        {
+
+            case 4:
+                msb1 = __builtin_clzl(lcp1);
+                msb2 = __builtin_clzl(lcp2);
+                break;
+            case 8:
+                msb1 = __builtin_clzll(lcp1);
+                msb2 = __builtin_clzll(lcp2);
+                break;
+        }
+
+        int y = std::max(msb1, msb2);
+        y = sizeof(k)*8 - y-1;
+        
+        E e_mask = E(1) << y;
+        e_mask -= 1;
+        //E e_mask2 = e_mask << sizeof(k)*8 -y-1;
+        E e = k | e_mask; 
+        if((e=(E(1) << y-1))&k)
+        {
+            e |=
+        }
+    }
+
+        
+    
+
+    void initialize(std::shared_ptr<Node> x)
+    {
+        precompute_node(x);
+        if(!x->isLeaf)
+        {
+            for(int i = 0; i < x->n+1; ++i)
+            {
+                initialize(x->children[i]);
+            }
+        }
+    }
+
 
 public:
     void insert(E k)
@@ -187,7 +282,12 @@ public:
 
     E successor(E k)
     {
-        return successor(root, k);
+        return fusion_successor(root, k);//successor(root, k);
+    }
+
+    void initialize()
+    {
+        initialize(root);
     }
 };
 

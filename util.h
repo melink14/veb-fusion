@@ -69,6 +69,18 @@ T get_mask(const std::vector<int>& mask_bits)
 }
 
 template<typename T>
+T get_combo_mask(const std::vector<int>& a, const std::vector<int>& b)
+{
+    std::vector<int> temp;
+    for(int i = 0; i < a.size(); ++i)
+    {
+        temp.push_back(a[i]+b[i]);
+    }
+
+    return get_mask<T>(temp);
+}
+
+template<typename T>
 std::vector<int> get_m(const std::vector<int>& b_bits,  T& m)
 {
     m = 0;
@@ -96,6 +108,7 @@ std::vector<int> get_m(const std::vector<int>& b_bits,  T& m)
                     }
                 }
             }
+            okay = true;
           while_label:
             if(!okay)
             {
@@ -120,6 +133,69 @@ std::vector<int> get_m(const std::vector<int>& b_bits,  T& m)
     
 
     return m_bits;
+}
+
+template<typename T>
+T mul_high(T a, T b)
+{
+    int w = sizeof(a) *8;
+    switch(w)
+    {
+        case 32:
+        {
+            unsigned long long ret = (unsigned long long)a * b;
+            return ret >> w;
+            break;
+        }
+        case 64:
+        {
+            T a1 = a >> w/2;
+            T a0 = a&((T(1)<<w/2)-1);
+            T b1 = b >> w/2;
+            T b0 = b&((T(1)<<w/2)-1);
+
+            T res = a1*b1;
+            res += (a1*b0) >> w/2;
+            res += (a0*b1) >> w/2;
+
+            return res;
+        }
+    }
+    
+}
+
+template<typename T>
+T approx_sketch(T m, T x, T b_mask, T bm_mask, int shift_dis)
+{
+    if(shift_dis != sizeof(m)*8)
+    {
+        std::cout << "shift isn't a full word! " << shift_dis  << std::endl;
+    }
+
+    T x_prime = x & b_mask;
+    
+    T as = mul_high(x_prime, m);
+
+    return as & bm_mask;
+}
+
+// returns i+1
+template<typename T>
+int par_comp(T sketch_node, T sketch_k, T sketch_maskh, T sketch_maskl, int k, int gap)
+{
+    T diff = sketch_node - sketch_k;
+    diff &= sketch_maskh;
+
+    diff *= sketch_maskl;
+
+    unsigned mask = (1<<(unsigned)log(k))-1;
+
+    diff = (diff >> gap*k)&mask;
+
+    std::cout << "person after me:" << k-diff << std::endl;
+    
+    return k-diff;
+    
 }
 
 #endif //util_h
