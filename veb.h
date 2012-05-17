@@ -93,8 +93,11 @@ public:
         {
             max = x;
         }
+        //std::cout << "x:" << x << std::endl;
         E c = high(x, w_size);
+        //std::cout << "high:" << c << std::endl;
         E i = low(x, w_size);
+        //std::cout << "low:" << i << std::endl;
         if(clusters.count(c) == 0)
         {
             getSummary()->insert(c);

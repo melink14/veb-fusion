@@ -109,35 +109,35 @@ private:
 
     void insert_nonfull(std::shared_ptr<Node> x, E k)
     {
-        E i = x->n-1;
+        E i = x->n;
 
         if(x->isLeaf)
         {
-            while(i >= 0 && k < x->keys[i])
+            while(i >= 1 && k < x->keys[i-1])
             {
-                x->keys[i+1] = x->keys[i];
+                x->keys[i] = x->keys[i-1];
                 i--;
             }
-            x->keys[i+1] = k;
+            x->keys[i] = k;
             x->n++;
         }
         else
         {
-            while(i >= 0 && k < x->keys[i])
+            while(i >= 1 && k < x->keys[i-1])
             {
                 i--;
             }
             i++;
 
-            if(x->children[i]->n == max_keys)
+            if(x->children[i-1]->n == max_keys)
             {
-                split_child(x, i);
-                if( k > x->keys[i])
+                split_child(x, i-1);
+                if( k > x->keys[i-1])
                 {
                     i++;
                 }
             }
-            insert_nonfull(x->children[i], k);
+            insert_nonfull(x->children[i-1], k);
         }
     }
 
@@ -161,6 +161,7 @@ private:
             return successor(x->children[i], k);
         }
     }
+
 
 public:
     void insert(E k)
