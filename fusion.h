@@ -234,12 +234,31 @@ private:
         
         E e_mask = E(1) << y;
         e_mask -= 1;
+        
+        E new_mask = (E(1) << (y-1));
+        new_mask ^= E(-1); // hopefully this has one 0
+        
         //E e_mask2 = e_mask << sizeof(k)*8 -y-1;
         E e = k | e_mask; 
-        if((e=(E(1) << y-1))&k)
+        if(((E(1) << y-1))&k)
         {
-            e |=
+            e &= new_mask;
         }
+        else
+        {
+            e &= E(-1) ^ ((E(1) << (y-1))-1)
+        }
+
+        int i = par_comp(x->sketches,
+                         approx_sketch(x->m,
+                                       k,
+                                       x->b_mask,
+                                       x->bm_mask,
+                                       x->bs.front()+x->ms.front())*x->sketch_maskl,
+                         x->sketch_maskh,
+                         x->sketch_maskl,
+                         k,
+                         x->shift_gap);
     }
 
         
