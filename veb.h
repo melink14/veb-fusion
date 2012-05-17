@@ -52,7 +52,6 @@ public:
     E successor(E x)
     {
         E w2 = w_size/2;
-        std::cout << w2 << std::endl;
         E c = high(x, w_size);
         E i = low(x, w_size);
         
