@@ -46,4 +46,10 @@ int main(int argc, char* argv[])
 
     unsigned long long mask = get_mask<unsigned long long>(msbs);
     std::cout << "mask:" << mask << std::endl;
+
+    unsigned long long m;
+
+    std::vector<int> m_bits = get_m(msbs, m);
+
+    std::cout << msbs[0]+m_bits[0] << std::endl;
 }

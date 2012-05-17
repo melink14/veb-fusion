@@ -17,7 +17,7 @@ T low(T x, T w_size)
 }
 
 template<typename T>
-std::vector<int> get_impor_bits(std::vector<T> keys)
+std::vector<int> get_impor_bits(const std::vector<T>& keys)
 {
     std::vector<int> ret;
     std::unordered_set<int> check;
@@ -57,7 +57,7 @@ std::vector<int> get_impor_bits(std::vector<T> keys)
 }
 
 template<typename T>
-T get_mask(std::vector<int> mask_bits)
+T get_mask(const std::vector<int>& mask_bits)
 {
     T ret = 0;
     for(int i = 0; i < mask_bits.size(); ++i)
@@ -66,6 +66,60 @@ T get_mask(std::vector<int> mask_bits)
     }
 
     return ret;
+}
+
+template<typename T>
+std::vector<int> get_m(const std::vector<int>& b_bits,  T& m)
+{
+    m = 0;
+    int r = b_bits.size();
+    int r3 = pow(r, 3);
+    std::vector<int> m_bits(r);
+
+    int mt = 0;
+    bool okay = false;
+    for(int i = 0; i < r; ++i)
+    {
+        
+        while(!okay)
+        {
+            for(int j = 0; j < i; ++j)
+            {
+                for(int k = 0; k < r; ++k)
+                {
+                    for(int l = 0; l < r; ++l)
+                    {
+                        if(mt == m_bits[j]+b_bits[k]-b_bits[l])
+                        {
+                            goto while_label;
+                        }
+                    }
+                }
+            }
+          while_label:
+            if(!okay)
+            {
+                mt++;
+            }
+            else
+            {
+                break;
+            }
+        }
+
+        int mt_final = (sizeof(T)*8 - b_bits[i] + i*r3);
+        mt_final = mt_final/r3 * r3;
+
+        mt_final += mt;
+
+        m_bits[i] = mt_final;
+        m |= T(1) << mt_final;
+    }
+
+    // found m_prime;
+    
+
+    return m_bits;
 }
 
 #endif //util_h
