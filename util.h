@@ -56,4 +56,16 @@ std::vector<int> get_impor_bits(std::vector<T> keys)
     return ret;
 }
 
+template<typename T>
+T get_mask(std::vector<int> mask_bits)
+{
+    T ret = 0;
+    for(int i = 0; i < mask_bits.size(); ++i)
+    {
+        ret |= T(1)<<mask_bits[i];
+    }
+
+    return ret;
+}
+
 #endif //util_h

@@ -1,6 +1,7 @@
 #include "veb.h"
 #include "fusion.h"
 #include <set>
+#include "util.h"
 
 int main(int argc, char* argv[])
 {
@@ -42,4 +43,7 @@ int main(int argc, char* argv[])
     {
         std::cout << msbs[i] << std::endl;
     }
+
+    unsigned long long mask = get_mask<unsigned long long>(msbs);
+    std::cout << "mask:" << mask << std::endl;
 }
