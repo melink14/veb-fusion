@@ -16,6 +16,30 @@ T low(T x, T w_size)
     return x&((T(1)<<w_size/2)-1);
 }
 
+// returns 0 index most significant bit
+// returns negative number if arg is 0
+template<typename T>
+int get_msb(T arg)
+{
+    if(arg <= 0)
+        return -1;
+
+    int msb;
+    switch(sizeof(arg))
+    {
+        case 4:
+            msb = __builtin_clzl(arg);
+            break;
+        case 8:
+            msb = __builtin_clzll(arg);
+            break;
+    }
+
+                
+    // minus 1 for 0 indexed
+    return sizeof(arg)*8-msb-1;
+}
+
 template<typename T>
 std::vector<int> get_impor_bits(const std::vector<T>& keys)
 {
@@ -180,22 +204,42 @@ T approx_sketch(T m, T x, T b_mask, T bm_mask, int shift_dis)
 }
 
 // returns i+1
+// k is the number of blocks
+// ie number of keys in node
 template<typename T>
 int par_comp(T sketch_node, T sketch_k, T sketch_maskh, T sketch_maskl, int k, int gap)
 {
     T diff = sketch_node - sketch_k;
     diff &= sketch_maskh;
 
-    diff *= sketch_maskl;
+    int msb = get_msb(diff);
 
-    unsigned mask = (1<<(unsigned)log(k))-1;
+    // This means nothing is bigger so it should go at the end
+    if(msb < 0)
+        return k;
 
-    diff = (diff >> gap*k)&mask;
+    unsigned ind = msb / (gap+1);
 
-    std::cout << "person after me:" << k-diff << std::endl;
+    //std::cout << "person after me:" << k-ind-1 << std::endl;
     
-    return k-diff;
+    return k-ind-1;
+    
+    
+    // diff *= sketch_maskl;
+
+    
+    
+
+    // unsigned mask = (T(1)<<(unsigned)log2(k))-1;
+
+    // diff = (diff >> gap*k)&mask;
+
+    // std::cout << "person after me:" << k-diff << std::endl;
+    
+    // return k-diff;
     
 }
+
+
 
 #endif //util_h

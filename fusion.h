@@ -25,17 +25,17 @@ private:
         bool isLeaf;
         E n;
 
-        std::vector<int> bs;
-        std::vector<int> ms;
+        std::vector<int> bs; //important bits
+        std::vector<int> ms; //m bits
 
-        E m;
-        E b_mask;
-        E bm_mask;
-        int sketch_gap;
-        E sketches;
+        E m; // multiplicative constant for sketching
+        E b_mask; // used to mask out important bits
+        E bm_mask; // used to mask out b+m bits
+        int sketch_gap; // the space a sketch takes up
+        E sketches;  // A word containing all sketches
 
-        E sketch_maskl;
-        E sketch_maskh;
+        E sketch_maskl; // mask with 1 at the start of sketch
+        E sketch_maskh; // mask with 1 at the end of sketch 
 
     public:
         Node(E max_keys)
@@ -64,13 +64,13 @@ private:
         x->sketch_gap = x->bs.back()+x->ms.back()-x->bs.front()-x->ms.front();
         x->sketch_gap = x->sketch_gap ? x->sketch_gap : 1; // if only 1 item gap is 0 from prev line
 
-        int size = x->keys.size();
-        for(int j = 0; j < x->keys.size(); ++j)
+        int size = x->n;
+        for(int j = 0; j < size; ++j)
         {
             E sketch = approx_sketch(x->m, x->keys[size-j-1], x->b_mask, x->bm_mask, x->bs.front()+x->ms.front());
             x->sketches |= (sketch | (E(1)<<x->sketch_gap)) << j*(x->sketch_gap+1);
             x->sketch_maskl |= (E(1) << j*(x->sketch_gap+1));
-            x->sketch_maskh |= (E(1) << j*(x->sketch_gap+1));
+            x->sketch_maskh |= (E(1)<<x->sketch_gap) << j*(x->sketch_gap+1);
         }
     }
     
@@ -201,64 +201,151 @@ private:
 
     E fusion_successor(std::shared_ptr<Node> x, E k)
     {
+        if(x->n == 0)
+        {
+            if(x->isLeaf)
+                return 0;
+            return fusion_successor(x->children[0], k);
+        }
+        E app_sketch = approx_sketch(x->m,
+                                     k,
+                                     x->b_mask,
+                                     x->bm_mask,
+                                     x->bs.front()+x->ms.front());
+
+        E repeat_sketch = app_sketch * x->sketch_maskl;
+        
         int i1 = par_comp(x->sketches,
-                          approx_sketch(x->m,
-                                        k,
-                                        x->b_mask,
-                                        x->bm_mask,
-                                        x->bs.front()+x->ms.front()) * x->sketch_maskl,
+                          repeat_sketch,
                           x->sketch_maskh,
                           x->sketch_maskl,
                           x->n,
                           x->sketch_gap);
 
-        int lcp1 = k ^ x->keys[i1];
-        int lcp2 = k ^ x->keys[i1-1];
-        int msb1;
-        int msb2;
-        switch(sizeof(k))
+        int y = 0;
+        
+        if(i1 < x->n)
         {
+            int lcp1 = k ^ x->keys[i1];
+            int msb1;
+            switch(sizeof(k))
+            {
 
-            case 4:
-                msb1 = __builtin_clzl(lcp1);
-                msb2 = __builtin_clzl(lcp2);
-                break;
-            case 8:
-                msb1 = __builtin_clzll(lcp1);
-                msb2 = __builtin_clzll(lcp2);
-                break;
+                case 4:
+                    msb1 = __builtin_clzl(lcp1);
+                    
+                    break;
+                case 8:
+                    msb1 = __builtin_clzll(lcp1);
+                    
+                    break;
+            }
+
+            y = msb1;
+        }
+        
+        if(i1 != 0)
+        {
+        
+            int lcp2 = k ^ x->keys[i1-1];
+        
+            int msb2;
+            switch(sizeof(k))
+            {
+
+                case 4:
+                    
+                    msb2 = __builtin_clzl(lcp2);
+                    break;
+                case 8:
+                    
+                    msb2 = __builtin_clzll(lcp2);
+                    break;
+            }
+            y = std::max(y,msb2);
         }
 
-        int y = std::max(msb1, msb2);
+        // if(i1 > 0 && i1 < x->n)
+        // {
+        //     y = std::max(msb1, msb2);
+        // }
+
+        // set y to next least significant bit
+        // ie. does it go left or right
         y = sizeof(k)*8 - y-1;
-        
+
+        // this puts a 1 at first bit which is different
         E e_mask = E(1) << y;
+        // This makes all bits after that 1s
         e_mask -= 1;
-        
-        E new_mask = (E(1) << (y-1));
+
+        // this puts a 1 at the first bit after
+        E new_mask = (E(1) << (y));
         new_mask ^= E(-1); // hopefully this has one 0
         
         //E e_mask2 = e_mask << sizeof(k)*8 -y-1;
         E e = k | e_mask; 
-        if(((E(1) << y-1))&k)
+        if(((E(1) << y))&k)
         {
             e &= new_mask;
         }
         else
         {
-            e &= E(-1) ^ ((E(1) << (y-1))-1)
+            e &= E(-1) ^ e_mask; //((E(1) << (y))-1);
+            e |= (E(1)<<y);
         }
 
+        app_sketch = approx_sketch(x->m,
+                                     e,
+                                     x->b_mask,
+                                     x->bm_mask,
+                                     x->bs.front()+x->ms.front());
+        
         int i = par_comp(x->sketches,
-                         approx_sketch(x->m,
-                                       k,
-                                       x->b_mask,
-                                       x->bm_mask,
-                                       x->bs.front()+x->ms.front())*x->sketch_maskl,
+                         app_sketch*x->sketch_maskl,
                          x->sketch_maskh,
                          x->sketch_maskl,
-                         k,
-                         x->shift_gap);
+                         x->n,
+                         x->sketch_gap);
+
+        // this check is necessary due to singlteon nodes being weird
+        // This check could be at the top but I want to give the fusion
+        // buddies a chance.
+        if(x->n != i && k > x->keys[i])
+        {
+            i++;
+        }
+
+        std::cout << "index after is:  " << i << std::endl;
+        if(x->n != i)
+        {
+            std::cout << k << " is less than " << x->keys[i] << std::endl;
+            std::cout << "test:" << (k < x->keys[i]) << std::endl; 
+        }
+        else
+        {
+            std::cout << k << " is bigger than all " << x->keys[x->n-1] << std::endl;
+            std::cout << "test:" << (k > x->keys[x->n-1]) << std::endl;
+        }
+        
+        if(x->isLeaf)
+        {
+            if(i == x->n)
+                return 0;
+            
+            return x->keys[i];
+        }
+
+        
+        E succ = fusion_successor(x->children[i], k);
+        if(succ == 0)
+        {
+            if(i == x->n)
+                return succ;
+            return x->keys[i];
+        }
+        else
+            return succ;
     }
 
         
